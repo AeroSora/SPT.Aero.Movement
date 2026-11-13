@@ -1,0 +1,92 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Build with dotnet build -c Release -p:GameDir="C:\SPT". GameDir is the SPT folder containing EscapeFromTarkov.exe. To save it locally, copy Directory.Build.local.props.example to Directory.Build.local.props.
+    The build writes bin\Release\Aero.Movement.dll, and Aero.Movement.Fika.dll (the Fika sync) when GameDir has Fika installed. Add -p:DeployToGame=true to copy them into BepInEx\plugins.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Aero.Movement</AssemblyName>
+    <RootNamespace>Aero.Movement</RootNamespace>
+    <Version>0.1.0</Version>
+    <Product>Aero.Movement</Product>
+    <AssemblyTitle>Aero.Movement</AssemblyTitle>
+    <Description>Movement overhaul for SPT: responsive ground movement, weight inertia, jump fixes, ledge climbing and grabs, lean, crawl, sprint stop and door kicks.</Description>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <ManagedDir>$(GameDir)\EscapeFromTarkov_Data\Managed</ManagedDir>
+    <BepInExDir>$(GameDir)\BepInEx</BepInExDir>
+  </PropertyGroup>
+
+  <Target Name="RequireGameDir" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(GameDir)' == ''"
+           Text="Set GameDir to your SPT install folder (the one containing EscapeFromTarkov.exe): pass -p:GameDir=... or set it in Directory.Build.local.props." />
+    <Error Condition="!Exists('$(ManagedDir)\Assembly-CSharp.dll')"
+           Text="GameDir '$(GameDir)' does not contain EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll." />
+    <Error Condition="!Exists('$(BepInExDir)\core\BepInEx.dll')"
+           Text="GameDir '$(GameDir)' does not contain BepInEx\core\BepInEx.dll." />
+  </Target>
+
+  <ItemGroup>
+    <Compile Include="Body\CrawlSpeed.cs" />
+    <Compile Include="Body\LeanPatch.cs" />
+    <Compile Include="Body\LeanTuning.cs" />
+    <Compile Include="Body\SprintStopPatch.cs" />
+    <Compile Include="Climb\ClimbAssist.cs" />
+    <Compile Include="Climb\ClimbDetection.cs" />
+    <Compile Include="Climb\MidairVault.cs" />
+    <Compile Include="Climb\VaultGatePatches.cs" />
+    <Compile Include="Doors\ContextualJumpPatch.cs" />
+    <Compile Include="Doors\DoorBreacher.cs" />
+    <Compile Include="Doors\Kick.cs" />
+    <Compile Include="Doors\KickStatePatch.cs" />
+    <Compile Include="Doors\ReverseDoorClosePatch.cs" />
+    <Compile Include="Ground\GroundMovementPatch.cs" />
+    <Compile Include="Ground\InertiaCurvePatch.cs" />
+    <Compile Include="Ground\OverweightRegen.cs" />
+    <Compile Include="Jump\CoyoteJumpPatch.cs" />
+    <Compile Include="Jump\JumpCurvePatch.cs" />
+    <Compile Include="Jump\ReliableJumpPatch.cs" />
+    <Compile Include="Plugin.cs" />
+    <Compile Include="Settings.cs" />
+    <Compile Include="Shared\BodyAnimator.cs" />
+    <Compile Include="Shared\ConfigurationManagerAttributes.cs" />
+    <Compile Include="Shared\Diag.cs" />
+    <Compile Include="Shared\FikaLoader.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx"><HintPath>$(BepInExDir)\core\BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(BepInExDir)\core\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Comfort"><HintPath>$(ManagedDir)\Comfort.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(ManagedDir)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AnimationModule"><HintPath>$(ManagedDir)\UnityEngine.AnimationModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(ManagedDir)\UnityEngine.InputLegacyModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(ManagedDir)\UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AudioModule"><HintPath>$(ManagedDir)\UnityEngine.AudioModule.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <Target Name="BuildFikaSync" AfterTargets="Build" Condition="Exists('$(BepInExDir)\plugins\Fika\Fika.Core.dll')">
+    <MSBuild Projects="Fika\Aero.Movement.Fika.csproj" Targets="Restore" Properties="GameDir=$(GameDir);Configuration=$(Configuration);FikaSyncRestore=true" />
+    <MSBuild Projects="Fika\Aero.Movement.Fika.csproj" Targets="Build" Properties="GameDir=$(GameDir);Configuration=$(Configuration)" />
+  </Target>
+
+  <Target Name="SkipFikaSync" AfterTargets="Build" Condition="!Exists('$(BepInExDir)\plugins\Fika\Fika.Core.dll')">
+    <Message Importance="high" Text="Fika is not installed in GameDir; Aero.Movement.Fika.dll (the Fika sync) was not built." />
+  </Target>
+
+  <Target Name="DeployToGame" AfterTargets="Build" DependsOnTargets="BuildFikaSync" Condition="'$(DeployToGame)' == 'true'">
+    <Copy SourceFiles="$(OutputPath)Aero.Movement.dll" DestinationFolder="$(BepInExDir)\plugins\" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(OutputPath)Aero.Movement.Fika.dll" DestinationFolder="$(BepInExDir)\plugins\" SkipUnchangedFiles="false" Condition="Exists('$(OutputPath)Aero.Movement.Fika.dll')" />
+  </Target>
+</Project>
