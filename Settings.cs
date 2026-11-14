@@ -11,10 +11,13 @@ namespace Aero.Movement
         internal const string WeightSection = "2. Weight";
         internal const string JumpSection = "3. Jumping";
         internal const string ClimbSection = "4. Climbing";
-        internal const string LeanSection = "5. Lean";
-        internal const string ProneSection = "6. Prone";
-        internal const string SprintSection = "7. Sprint";
-        internal const string KickSection = "8. Door Kick";
+        internal const string LedgeGrabSection = "5. Ledge Grab";
+        internal const string LeanSection = "6. Lean";
+        internal const string ProneSection = "7. Prone";
+        internal const string SprintSection = "8. Sprint";
+        internal const string KickSection = "9. Door Kick";
+
+        internal const string EnabledKey = "Enabled";
 
         internal static ConfigEntry<bool> GroundModel;
         internal static ConfigEntry<float> Acceleration;
@@ -48,19 +51,19 @@ namespace Aero.Movement
 
         internal static void Bind(ConfigFile config)
         {
-            GroundModel = config.Bind(GroundSection, "Responsive ground movement", true, Desc(
-                "Replaces the game's eased walking acceleration with a responsive model: you reach full speed sooner and stop shorter, and heavy loadouts carry more momentum. Walk and run speeds are unchanged.", 3));
+            GroundModel = config.Bind(GroundSection, EnabledKey, true, Desc(
+                "Responsive ground movement: replaces the game's eased walking acceleration, so you reach full speed sooner and stop shorter, and heavy loadouts carry more momentum. Walk and run speeds are unchanged.", 3));
             Acceleration = config.Bind(GroundSection, "Acceleration", 4f, Desc(
-                "How quickly you reach full walking speed. Higher is snappier. (1 to 30)", 2, new AcceptableValueRange<float>(1f, 30f)));
+                "How quickly you reach full walking speed. Higher is snappier. Same meaning as Source's sv_accelerate: Half-Life 2 uses 10. (1 to 30)", 2, new AcceptableValueRange<float>(1f, 30f)));
             StoppingFriction = config.Bind(GroundSection, "Stopping friction", 6f, Desc(
-                "How quickly you come to a stop after releasing the movement keys. Higher stops shorter. (0.5 to 20)", 1, new AcceptableValueRange<float>(0.5f, 20f)));
+                "How quickly you come to a stop after releasing the movement keys. Higher stops shorter. Same meaning as Source's sv_friction: Half-Life 2 uses 4. (0.5 to 20)", 1, new AcceptableValueRange<float>(0.5f, 20f)));
 
             InertiaCurve = config.Bind(WeightSection, "Weight inertia curve", true, Desc(
                 "Inertia no longer grows with every kilogram: it stays at the base level up to 60 kg and rises quickly beyond that.", 2));
             OverweightRegenPercent = config.Bind(WeightSection, "Stamina regeneration while overweight (%)", 10f, Desc(
                 "Severely overweight, the game stops stamina regeneration completely; this keeps the given percentage of your normal regeneration. 0 keeps the game's behaviour. (0 to 50)", 1, new AcceptableValueRange<float>(0f, 50f)));
 
-            SnappierJump = config.Bind(JumpSection, "Snappier jump arc", true, Desc(
+            SnappierJump = config.Bind(JumpSection, "Alternative jump arc", true, Desc(
                 "Moving jumps rise and fall faster while reaching the same height. Jumps in place are unchanged.", 2));
             JumpFixes = config.Bind(JumpSection, "Jump fixes", true, Desc(
                 "A jump while holding a movement key always gets full height and distance, a quick tap of the jump key always jumps instead of vaulting, and a jump pressed just after stepping off an edge still jumps.", 1));
@@ -71,9 +74,9 @@ namespace Aero.Movement
                 "How far from an obstacle you can be and still climb it, in metres. 0.5 is the game's own reach. (0.3 to 2.5)", 4, new AcceptableValueRange<float>(0.3f, 2.5f)));
             ClimbAssist = config.Bind(ClimbSection, "Climb height assist", true, Desc(
                 "When a climb ends below the surface you were climbing onto, you are lifted onto it, so every climb the game starts also finishes.", 3));
-            MidairGrab = config.Bind(ClimbSection, "Midair ledge grab", true, Desc(
-                "Grab and climb a ledge in the middle of a jump by holding the grab key with forward movement.", 2));
-            GrabKey = config.Bind(ClimbSection, "Ledge grab key", new KeyboardShortcut(KeyCode.Space), Desc(
+            MidairGrab = config.Bind(LedgeGrabSection, EnabledKey, true, Desc(
+                "Midair ledge grab: grab and climb a ledge in the middle of a jump by holding the grab key with forward movement.", 2));
+            GrabKey = config.Bind(LedgeGrabSection, "Ledge grab key", new KeyboardShortcut(KeyCode.Space), Desc(
                 "Hold while in the air and moving forward to grab a ledge. Space lets you keep holding the jump key.", 1));
 
             LeanSpeed = config.Bind(LeanSection, "Lean speed", 2f, Desc(
@@ -87,10 +90,10 @@ namespace Aero.Movement
             SmoothSprintStop = config.Bind(SprintSection, "Smooth sprint stop", true, Desc(
                 "Releasing forward during a straight sprint glides to a stop, as a diagonal release does, instead of halting abruptly.", 1));
 
-            Kick = config.Bind(KickSection, "Kick", true, Desc(
-                "Kick with the kick key anywhere; a door in front of you is kicked open.", 6));
-            KickKey = config.Bind(KickSection, "Kick key", new KeyboardShortcut(KeyCode.V), Desc(
-                "Press to kick.", 5));
+            Kick = config.Bind(KickSection, EnabledKey, true, Desc(
+                "Door kick: kick with the kick key anywhere, and a door in front of you is kicked open.", 6));
+            KickKey = config.Bind(KickSection, "Kick key", KeyboardShortcut.Empty, Desc(
+                "Press to kick. Not bound by default, because the game's own default for mounting a weapon is V; you can still kick a door by jumping at it (below).", 5));
             JumpKick = config.Bind(KickSection, "Jump kicks a door in front", true, Desc(
                 "Pressing jump while facing a door you can kick open kicks it instead of jumping; everywhere else jump works as usual.", 4));
             KickLocked = config.Bind(KickSection, "Kick open locked doors", false, Desc(

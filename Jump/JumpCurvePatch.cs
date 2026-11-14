@@ -41,6 +41,9 @@ namespace Aero.Movement.Jump
             if (!ReferenceEquals(__instance.MovementContext, Plugin.LocalMovementContext))
                 return true;
 
+            if (AirStrafingCompat.OwnsAirStep)
+                return true;
+
             if (__instance._initialMagnitude <= 0.5f)
                 return true;
 

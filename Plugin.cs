@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Aero.Movement
 {
-    [BepInPlugin("aero.movement", "Aero.Movement", "0.1.0")]
+    [BepInPlugin("aero.movement", "Aero.Movement", "0.2.0")]
     [BepInDependency("com.fika.core", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
@@ -44,7 +44,9 @@ namespace Aero.Movement
             Harmony.CreateAndPatchAll(typeof(Jump.CoyoteJumpPatch));
             Harmony.CreateAndPatchAll(typeof(Jump.ReliableJumpPatch));
             Harmony.CreateAndPatchAll(typeof(Climb.VaultGatePatches));
+            Harmony.CreateAndPatchAll(typeof(Climb.ClimbDetection));
             Harmony.CreateAndPatchAll(typeof(Body.LeanPatch));
+            Harmony.CreateAndPatchAll(typeof(Body.LeanTuning));
             Harmony.CreateAndPatchAll(typeof(Body.SprintStopPatch));
             Harmony.CreateAndPatchAll(typeof(Doors.KickStatePatch));
             Harmony.CreateAndPatchAll(typeof(Doors.ContextualJumpPatch));

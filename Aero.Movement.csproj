@@ -7,7 +7,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Aero.Movement</AssemblyName>
     <RootNamespace>Aero.Movement</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Product>Aero.Movement</Product>
     <AssemblyTitle>Aero.Movement</AssemblyTitle>
     <Description>Movement overhaul for SPT: responsive ground movement, weight inertia, jump fixes, ledge climbing and grabs, lean, crawl, sprint stop and door kicks.</Description>
@@ -52,6 +52,7 @@
     <Compile Include="Ground\GroundMovementPatch.cs" />
     <Compile Include="Ground\InertiaCurvePatch.cs" />
     <Compile Include="Ground\OverweightRegen.cs" />
+    <Compile Include="Jump\AirStrafingCompat.cs" />
     <Compile Include="Jump\CoyoteJumpPatch.cs" />
     <Compile Include="Jump\JumpCurvePatch.cs" />
     <Compile Include="Jump\ReliableJumpPatch.cs" />

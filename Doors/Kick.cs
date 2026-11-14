@@ -57,7 +57,8 @@ namespace Aero.Movement.Doors
 
         internal static void Update(Player player, MovementContext mc)
         {
-            if (Settings.Kick.Value && Input.GetKeyDown(Settings.KickKey.Value.MainKey))
+            KeyCode kickKey = Settings.KickKey.Value.MainKey;
+            if (Settings.Kick.Value && kickKey != KeyCode.None && Input.GetKeyDown(kickKey))
                 TryFire(player, mc);
 
             if (_impactPending && Time.time >= _impactAt)

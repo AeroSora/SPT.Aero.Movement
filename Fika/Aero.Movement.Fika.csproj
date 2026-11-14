@@ -7,7 +7,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Aero.Movement.Fika</AssemblyName>
     <RootNamespace>Aero.Movement.Fika</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

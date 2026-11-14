@@ -42,7 +42,7 @@ namespace Aero.Movement.Ground
             if (mc == null || !ReferenceEquals(mc, Plugin.LocalMovementContext) || mc.IsAI || mc.IsInPronePose) return;
             if (mc.PreviousState == null || mc.PreviousState.Name != EPlayerState.Sprint) return;
             Vector3 world = mc.Velocity;
-            float metresPerUnit = MetresPerUnit(mc.PoseLevel) * Mathf.Max(_floorRatio, 1f);
+            float metresPerUnit = MetresPerUnit(mc.PoseLevel, TargetSpeed) * Mathf.Max(_floorRatio, 1f);
             Vector2 seeded = Vector2.ClampMagnitude(new Vector2(world.x, world.z) / metresPerUnit, 2f);
             __instance._speed = seeded;
             __instance._velocity = Vector2.zero;
@@ -126,7 +126,7 @@ namespace Aero.Movement.Ground
                 _lastLog = Time.time;
                 Diag.Log(DiagChannel.Ground, $"[GroundModel] state={mc.CurrentState?.Name} inertia={heaviness:F2} accel={accel:F1} friction={friction:F1} " +
                                    $"wish={wishSpeed:F2} speed={magnitude:F2} target={s._targetSpeed:F2} pose={mc.PoseLevel:F2} " +
-                                   $"metresPerUnit={MetresPerUnit(mc.PoseLevel):F2}");
+                                   $"metresPerUnit={MetresPerUnit(mc.PoseLevel, TargetSpeed):F2}");
             }
         }
 
@@ -134,34 +134,65 @@ namespace Aero.Movement.Ground
         private static float _lastWishSpeed = 0.63f;
         private static int _modelFrame = -1;
         private static float _steadyTime;
-        private static readonly float[] _metresPerUnit = new float[11];
 
-        private const float MinCalibrationSpeed = 0.3f;
+        private const float SpeedStep = 0.025f;
+        private const int SpeedBuckets = 49;
+        private static readonly float[,] _metresPerUnit = new float[11, SpeedBuckets];
 
-        private static float SeedMetresPerUnit(float pose) => Mathf.Lerp(2.38f, 4.49f, Mathf.Clamp01(pose));
+        private static readonly float[] SeedSpeeds = { 0.05f, 0.10f, 0.15f, 0.20f, 0.25f, 0.30f, 0.35f, 0.40f };
+        private static readonly float[] SeedStandingMetresPerSecond = { 0.86f, 0.95f, 1.045f, 1.17f, 1.30f, 1.455f, 1.62f, 1.80f };
+        private const float StandingMetresPerUnit = 4.49f;
 
-        private static float MetresPerUnit(float pose)
+        private static float SeedMetresPerUnit(float pose, float speed)
         {
-            int bucket = Mathf.Clamp(Mathf.RoundToInt(pose * 10f), 0, 10);
-            if (_metresPerUnit[bucket] <= 0f) _metresPerUnit[bucket] = SeedMetresPerUnit(bucket / 10f);
-            return _metresPerUnit[bucket];
+            float poseScale = Mathf.Lerp(2.38f, StandingMetresPerUnit, Mathf.Clamp01(pose)) / StandingMetresPerUnit;
+            speed = Mathf.Max(speed, 0.01f);
+            float metresPerSecond;
+            if (speed >= SeedSpeeds[SeedSpeeds.Length - 1]) return StandingMetresPerUnit * poseScale;
+            if (speed <= SeedSpeeds[0]) metresPerSecond = SeedStandingMetresPerSecond[0];
+            else
+            {
+                int i = 1;
+                while (SeedSpeeds[i] < speed) i++;
+                float f = (speed - SeedSpeeds[i - 1]) / (SeedSpeeds[i] - SeedSpeeds[i - 1]);
+                metresPerSecond = Mathf.Lerp(SeedStandingMetresPerSecond[i - 1], SeedStandingMetresPerSecond[i], f);
+            }
+            return metresPerSecond / speed * poseScale;
         }
+
+        private static int PoseBucket(float pose) => Mathf.Clamp(Mathf.RoundToInt(pose * 10f), 0, 10);
+        private static int SpeedBucket(float speed) => Mathf.Clamp(Mathf.RoundToInt(speed / SpeedStep), 0, SpeedBuckets - 1);
+
+        private static float MetresPerUnit(float pose, float targetSpeed)
+        {
+            int p = PoseBucket(pose), s = SpeedBucket(targetSpeed);
+            if (_metresPerUnit[p, s] <= 0f) _metresPerUnit[p, s] = SeedMetresPerUnit(p / 10f, Mathf.Max(s, 1) * SpeedStep);
+            return _metresPerUnit[p, s];
+        }
+
+        private static float TargetSpeed => _lastWishSpeed * Mathf.Max(_floorRatio, 1f);
+
+        private static float _lastCalibrationLog = -10f;
 
         private static void Calibrate(MovementContext mc, Vector3 animatorDelta, float dt)
         {
             float modelSpeed = _lastVelocity.magnitude * _floorRatio;
             float target = _lastWishSpeed * _floorRatio;
-            bool steady = modelSpeed > 0.05f && target > 0f && Mathf.Abs(modelSpeed - target) < 0.02f * target;
+            bool steady = modelSpeed > 0.01f && target > 0f && Mathf.Abs(modelSpeed - target) < 0.02f * target;
             _steadyTime = steady ? _steadyTime + dt : 0f;
             if (_steadyTime < 0.4f) return;
-
-            if (target < MinCalibrationSpeed) return;
             float animatorSpeed = new Vector2(animatorDelta.x, animatorDelta.z).magnitude / dt;
-            if (animatorSpeed < 0.2f) return;
-            int bucket = Mathf.Clamp(Mathf.RoundToInt(mc.PoseLevel * 10f), 0, 10);
-            float current = MetresPerUnit(mc.PoseLevel);
-            float seed = SeedMetresPerUnit(bucket / 10f);
-            _metresPerUnit[bucket] = Mathf.Clamp(Mathf.Lerp(current, animatorSpeed / modelSpeed, 0.05f), seed * 0.7f, seed * 1.3f);
+            if (animatorSpeed < 0.05f) return;
+            int p = PoseBucket(mc.PoseLevel), s = SpeedBucket(target);
+            float current = MetresPerUnit(mc.PoseLevel, target);
+            float seed = SeedMetresPerUnit(p / 10f, Mathf.Max(s, 1) * SpeedStep);
+            _metresPerUnit[p, s] = Mathf.Clamp(Mathf.Lerp(current, animatorSpeed / modelSpeed, 0.05f), seed * 0.7f, seed * 1.3f);
+            if (Time.time - _lastCalibrationLog > 2f)
+            {
+                _lastCalibrationLog = Time.time;
+                Diag.Log(DiagChannel.Ground, $"[GroundModel] scale pose={p / 10f:F1} speed={target:F3}: {_metresPerUnit[p, s]:F2} m/unit " +
+                                             $"(seed {seed:F2}, animator {animatorSpeed:F2} m/s)");
+            }
         }
 
         [HarmonyPatch(typeof(MovePlayerState), nameof(MovePlayerState.UpdatePosition))]
@@ -178,7 +209,7 @@ namespace Aero.Movement.Ground
             {
                 Vector3 animatorDelta = mc.PlayerAnimatorDeltaPosition;
                 Calibrate(mc, animatorDelta, deltaTime);
-                Vector3 motion = new Vector3(_lastVelocity.x, 0f, _lastVelocity.y) * (_floorRatio * MetresPerUnit(mc.PoseLevel) * deltaTime);
+                Vector3 motion = new Vector3(_lastVelocity.x, 0f, _lastVelocity.y) * (_floorRatio * MetresPerUnit(mc.PoseLevel, TargetSpeed) * deltaTime);
                 motion.y = animatorDelta.y;
                 __instance.ApplyMotion(ref motion, deltaTime);
                 if (!mc.IsGrounded) mc.PlayerAnimatorEnableFallingDown(true);

@@ -9,7 +9,7 @@ namespace Aero.Movement.Climb
         [HarmonyPrefix]
         private static bool AvailabilityGate(VaultingComponent __instance, ref bool __result)
         {
-            if (!Settings.MidairGrab.Value) return true;
+            if (!Settings.MidairGrab.Value || !ClimbDetection.IsLocal(__instance)) return true;
 
             __result = __instance._vaultingSettings.IsActive
                 && !__instance.IsVaulting()
@@ -22,7 +22,7 @@ namespace Aero.Movement.Climb
         [HarmonyPrefix]
         private static bool StrategyGate(VaultingComponent __instance, ref EVaultingStrategy __result)
         {
-            if (!Settings.MidairGrab.Value) return true;
+            if (!Settings.MidairGrab.Value || !ClimbDetection.IsLocal(__instance)) return true;
 
             __result = EVaultingStrategy.None;
             if (!__instance.CanVaulting()) return false;
